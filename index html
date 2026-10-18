@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>55 Club - Color & Number Prediction Engine (With Visible Control)</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  
+  <!-- Canvas Confetti Library -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brandDark: '#0b0e14',
+            cardBg: '#161b26',
+            cardBorder: '#232a3b',
+            accentGold: '#f39c12',
+            neonGreen: '#00e676',
+            neonRed: '#ff1744',
+            neonViolet: '#ab47bc'
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Custom Scrollbars */
+    ::-webkit-scrollbar { height: 6px; width: 6px; }
+    ::-webkit-scrollbar-track { background: #0f121d; }
+    ::-webkit-scrollbar-thumb { background: #2a3245; border-radius: 4px; }
+    
+    button { user-select: none; -webkit-tap-highlight-color: transparent; }
+    
+    .glass-card {
+      background: rgba(22, 27, 38, 0.88);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    
+    .gradient-violet-red { background: linear-gradient(135deg, #ab47bc 50%, #ff1744 50%); }
+    .gradient-violet-green { background: linear-gradient(135deg, #ab47bc 50%, #00e676 50%); }
+
+    .radar-sweep { position: relative; }
+    .radar-sweep::after {
+      content: '';
+      position: absolute;
+      width: 100%; height: 100%; top: 0; left: 0;
+      border-radius: 50%;
+      border: 1px solid rgba(0, 230, 118, 0.6);
+      animation: radarPing 1.8s infinite;
+    }
+    @keyframes radarPing {
+      0% { transform: scale(1); opacity: 0.8; }
+      100% { transform: scale(2.2); opacity: 0; }
+    }
+
+    /* Pulse highlight for Three-Dot Admin Menu */
+    .admin-glow {
+      box-shadow: 0 0 15px rgba(243, 156, 18, 0.6);
+      animation: pulseGlow 2s infinite;
+    }
+    @keyframes pulseGlow {
+      0% { box-shadow: 0 0 8px rgba(243, 156, 18, 0.4); }
+      50% { box-shadow: 0 0 18px rgba(243, 156, 18, 0.9); }
+      100% { box-shadow: 0 0 8px rgba(243, 156, 18, 0.4); }
+    }
+  </style>
+</head>
+<body class="bg-brandDark text-gray-100 min-h-screen flex justify-center items-center font-sans antialiased p-0 sm:p-4">
+
+  <!-- MAIN APP CONTAINER -->
+  <div class="w-full max-w-md bg-[#0f121d] min-h-screen sm:min-h-[94vh] sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col border border-gray-800 relative">
+    
+    <!-- TOP STATUS BAR WITH THREE-DOT CONTROL MENU BUTTON -->
+    <div class="bg-cardBg border-b border-cardBorder p-3 flex flex-col gap-2 relative z-10">
+      <div class="flex items-center justify-between">
+        
+        <!-- App Title & Logo -->
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-500 to-yellow-300 flex items-center justify-center font-black text-black text-sm shadow-md">
+            55
+          </div>
+          <div>
+            <h1 class="text-xs font-black tracking-wider uppercase text-white leading-tight">55 CLUB PRO</h1>
+            <div class="flex items-center gap-1.5 text-[10px]">
+              <span id="vpnDot" class="w-2 h-2 bg-red-500 rounded-full"></span>
+              <span id="vpnStatusText" class="text-red-400 font-bold">VPN Off</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Top Right Actions including THREE DOT CONTROL BUTTON -->
+        <div class="flex items-center gap-2">
+          
+          <!-- Sound Toggle -->
+          <button id="soundToggleBtn" onclick="toggleAudio()" class="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center text-yellow-400 hover:bg-gray-700 transition" title="Sound Control">
+            <i id="soundIcon" class="fas fa-volume-up text-xs"></i>
+          </button>
+
+          <!-- VPN Toggle Button -->
+          <button id="vpnToggleBtn" onclick="toggleVPN()" class="px-2.5 py-1 bg-gray-800 hover:bg-gray-700 rounded-full text-[11px] font-semibold text-gray-200 border border-gray-700 transition flex items-center gap-1">
+            <i class="fas fa-shield-halved text-xs text-yellow-500"></i>
+            <span id="vpnBtnLabel">VPN</span>
+          </button>
+
+          <!-- HIGHLY VISIBLE THREE DOT (â‹®) CONTROL MENU BUTTON -->
+          <button onclick="promptAdminAccess()" class="admin-glow w-9 h-9 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 text-black font-black text-lg flex items-center justify-center active:scale-90 transition shadow-lg" title="Open Admin Control Panel">
+            <i class="fas fa-ellipsis-vertical"></i>
+          </button>
+
+        </div>
+      </div>
+
+      <!-- VPN Details Bar -->
+      <div id="vpnDetailsBar" class="hidden flex items-center justify-between text-[11px] bg-gray-900/90 rounded-lg p-2 border border-green-500/30 text-gray-300">
+        <div class="flex items-center gap-1.5">
+          <i class="fas fa-server text-green-400"></i>
+          <select id="vpnNodeSelect" onchange="changeVpnNode()" class="bg-transparent text-green-400 font-medium focus:outline-none cursor-pointer">
+            <option value="Singapore" class="bg-gray-900">ðŸ‡¸ðŸ‡¬ Singapore Node</option>
+            <option value="Mumbai" class="bg-gray-900">ðŸ‡®ðŸ‡³ Mumbai Node</option>
+            <option value="Frankfurt" class="bg-gray-900">ðŸ‡©ðŸ‡ª Frankfurt Node</option>
+          </select>
+        </div>
+        <div class="flex items-center gap-2">
+          <span>Ping: <strong id="vpnPing" class="text-green-400">22 ms</strong></span>
+          <span class="text-emerald-400 font-mono text-[10px]">256-BIT</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- MAIN SCROLLABLE APP BODY -->
+    <div class="flex-1 overflow-y-auto p-4 space-y-4 pb-24">
+
+      <!-- ADMIN OVERRIDE STATUS BADGE (VISIBLE WHEN CONTROL IS SET TO MANUAL) -->
+      <div id="adminOverrideBadge" class="hidden bg-amber-500/10 border border-amber-500/50 rounded-xl p-3 flex items-center justify-between text-xs text-amber-300 shadow-lg">
+        <div class="flex items-center gap-2">
+          <i class="fas fa-sliders text-amber-400 text-base animate-pulse"></i>
+          <div>
+            <span class="font-extrabold text-amber-400 uppercase tracking-wider block text-[10px]">Control Active:</span>
+            <span>Outcome Forced: <strong id="overrideSummary" class="text-white underline font-bold">Number 7 (Green/Big)</strong></span>
+          </div>
+        </div>
+        <button onclick="promptAdminAccess()" class="text-[11px] bg-amber-500 text-black font-extrabold px-2.5 py-1 rounded-lg hover:bg-amber-400 active:scale-95 transition">Edit</button>
+      </div>
+
+      <!-- USER BALANCE DISPLAY CARD -->
+      <div class="glass-card rounded-2xl p-4 relative overflow-hidden bg-gradient-to-r from-amber-500/20 via-cardBg to-amber-600/10 border-amber-500/30">
+        <div class="flex justify-between items-start">
+          <div>
+            <p class="text-xs text-gray-400 font-medium tracking-wide">Available Club Wallet Balance</p>
+            <h2 class="text-3xl font-black text-amber-400 tracking-tight mt-1 flex items-center gap-1">
+              â‚¹ <span id="walletBalance">1000.00</span>
+            </h2>
+          </div>
+          <button onclick="playSFX('click'); refreshBalance();" class="text-gray-400 hover:text-white p-1 transition" title="Refresh Wallet">
+            <i class="fas fa-rotate text-sm"></i>
+          </button>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3 mt-4">
+          <button onclick="openDepositModal()" class="py-2.5 px-4 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-lg shadow-emerald-900/30 flex items-center justify-center gap-2 active:scale-95 transition">
+            <i class="fas fa-wallet"></i> Deposit
+          </button>
+          <button onclick="openWithdrawModal()" class="py-2.5 px-4 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-lg shadow-amber-900/30 flex items-center justify-center gap-2 active:scale-95 transition">
+            <i class="fas fa-arrow-up-right-from-square"></i> Withdraw
+          </button>
+        </div>
+      </div>
+
+      <!-- TIMER & PERIOD DISPLAY CARD -->
+      <div class="glass-card rounded-2xl p-4 flex justify-between items-center relative overflow-hidden border-yellow-500/20">
+        <div id="lockOverlay" class="hidden absolute inset-0 bg-red-950/90 backdrop-blur-sm z-20 flex items-center justify-center gap-2 text-red-300 font-extrabold uppercase tracking-widest text-sm animate-pulse">
+          <i class="fas fa-lock text-lg"></i> Betting Locked For Draw
+        </div>
+
+        <div>
+          <div class="flex items-center gap-1.5 text-xs text-gray-400 font-medium">
+            <i class="fas fa-trophy text-amber-400"></i>
+            <span>55 Period ID</span>
+          </div>
+          <div id="periodDisplay" class="text-lg font-black text-white tracking-widest font-mono mt-0.5">
+            20260930101
+          </div>
+        </div>
+
+        <div class="text-right">
+          <span class="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Count Down</span>
+          <div class="flex items-center gap-1 text-2xl font-black font-mono mt-0.5">
+            <span class="bg-gray-800 text-amber-400 px-2 py-0.5 rounded-md border border-gray-700" id="timerMinutes">00</span>
+            <span class="text-amber-400">:</span>
+            <span class="bg-gray-800 text-amber-400 px-2 py-0.5 rounded-md border border-gray-700" id="timerSeconds">30</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- COLOR PREDICTION BETTING BUTTONS -->
+      <div class="grid grid-cols-3 gap-3">
+        <button onclick="selectBetType('Green', 'COLOR', 2.0, 'bg-emerald-500')" class="py-3.5 px-2 bg-gradient-to-b from-emerald-400 to-emerald-600 hover:from-emerald-500 hover:to-emerald-700 text-white font-extrabold text-sm rounded-xl shadow-lg shadow-emerald-900/40 active:scale-95 transition flex flex-col items-center gap-0.5 border border-emerald-300/30">
+          <span>GREEN</span>
+          <span class="text-[10px] bg-black/30 px-2 py-0.5 rounded-full font-mono">2.0X</span>
+        </button>
+
+        <button onclick="selectBetType('Violet', 'COLOR', 4.5, 'bg-purple-600')" class="py-3.5 px-2 bg-gradient-to-b from-purple-500 to-purple-700 hover:from-purple-600 hover:to-purple-800 text-white font-extrabold text-sm rounded-xl shadow-lg shadow-purple-900/40 active:scale-95 transition flex flex-col items-center gap-0.5 border border-purple-300/30">
+          <span>VIOLET</span>
+          <span class="text-[10px] bg-black/30 px-2 py-0.5 rounded-full font-mono">4.5X</span>
+        </button>
+
+        <button onclick="selectBetType('Red', 'COLOR', 2.0, 'bg-rose-600')" class="py-3.5 px-2 bg-gradient-to-b from-rose-500 to-rose-700 hover:from-rose-600 hover:to-rose-800 text-white font-extrabold text-sm rounded-xl shadow-lg shadow-rose-900/40 active:scale-95 transition flex flex-col items-center gap-0.5 border border-rose-300/30">
+          <span>RED</span>
+          <span class="text-[10px] bg-black/30 px-2 py-0.5 rounded-full font-mono">2.0X</span>
+        </button>
+      </div>
+
+      <!-- BIG / SMALL PREDICTION BUTTONS -->
+      <div class="grid grid-cols-2 gap-3">
+        <button onclick="selectBetType('Big', 'SIZE', 2.0, 'bg-orange-500')" class="py-3 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-black text-base rounded-xl shadow-lg shadow-orange-900/40 active:scale-95 transition flex items-center justify-between px-5 border border-amber-300/30">
+          <div class="text-left">
+            <div>BIG</div>
+            <div class="text-[10px] font-normal opacity-80">Numbers 5-9</div>
+          </div>
+          <span class="text-xs bg-black/30 px-2 py-1 rounded-md font-mono">2.0X</span>
+        </button>
+
+        <button onclick="selectBetType('Small', 'SIZE', 2.0, 'bg-blue-600')" class="py-3 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-black text-base rounded-xl shadow-lg shadow-indigo-900/40 active:scale-95 transition flex items-center justify-between px-5 border border-blue-300/30">
+          <div class="text-left">
+            <div>SMALL</div>
+            <div class="text-[10px] font-normal opacity-80">Numbers 0-4</div>
+          </div>
+          <span class="text-xs bg-black/30 px-2 py-1 rounded-md font-mono">2.0X</span>
+        </button>
+      </div>
+
+      <!-- NUMBER SELECTION GRID (0 - 9) -->
+      <div class="glass-card rounded-2xl p-3 border-gray-700/50">
+        <div class="flex justify-between items-center mb-2 px-1">
+          <span class="text-xs font-bold text-gray-300 uppercase tracking-wider">Number Multipliers</span>
+          <span class="text-[11px] text-amber-400 font-semibold font-mono">Payout 9.0X</span>
+        </div>
+        <div class="grid grid-cols-5 gap-2">
+          <button onclick="selectBetType('0', 'NUMBER', 9.0, 'gradient-violet-red')" class="h-12 rounded-xl gradient-violet-red font-black text-xl text-white shadow-md active:scale-90 transition border border-white/20 flex flex-col items-center justify-center leading-none">0<span class="text-[9px] font-medium opacity-80">Violet/Red</span></button>
+          <button onclick="selectBetType('1', 'NUMBER', 9.0, 'bg-emerald-500')" class="h-12 rounded-xl bg-emerald-500 hover:bg-emerald-600 font-black text-xl text-white shadow-md active:scale-90 transition border border-white/20 flex flex-col items-center justify-center leading-none">1<span class="text-[9px] font-medium opacity-80">Green</span></button>
+          <button onclick="selectBetType('2', 'NUMBER', 9.0, 'bg-rose-600')" class="h-12 rounded-xl bg-rose-600 hover:bg-rose-700 font-black text-xl text-white shadow-md active:scale-90 transition border border-white/20 flex flex-col items-center justify-center leading-none">2<span class="text-[9px] font-medium opacity-80">Red</span></button>
+          <button onclick="selectBetType('3', 'NUMBER', 9.0, 'bg-emerald-500')" class="h-12 rounded-xl bg-emerald-500 hover:bg-emerald-600 font-black text-xl text-white shadow-md active:scale-90 transition border border-white/20 flex flex-col items-center justify-center leading-none">3<span class="text-[9px] font-medium opacity-80">Green</span></button>
+          <button onclick="selectBetType('4', 'NUMBER', 9.0, 'bg-rose-600')" class="h-12 rounded-xl bg-rose-600 hover:bg-rose-700 font-black text-xl text-white shadow-md active:scale-90 transition border border-white/20 flex flex-col items-center justify-center leading-none">4<span class="text-[9px] font-medium opacity-80">Red</span></button>
+          <button onclick="selectBetType('5', 'NUMBER', 9.0, 'gradient-violet-green')" class="h-12 rounded-xl gradient-violet-green font-black text-xl text-white shadow-md active:scale-90 transition border border-white/20 flex flex-col items-center justify-center leading-none">5<span class="text-[9px] font-medium opacity-80">Violet/Grn</span></button>
+          <button onclick="selectBetType('6', 'NUMBER', 9.0, 'bg-rose-600')" class="h-12 rounded-xl bg-rose-600 hover:bg-rose-700 font-black text-xl text-white shadow-md active:scale-90 transition border border-white/20 flex flex-col items-center justify-center leading-none">6<span class="text-[9px] font-medium opacity-80">Red</span></button>
+          <button onclick="selectBetType('7', 'NUMBER', 9.0, 'bg-emerald-500')" class="h-12 rounded-xl bg-emerald-500 hover:bg-emerald-600 font-black text-xl text-white shadow-md active:scale-90 transition border border-white/20 flex flex-col items-center justify-center leading-none">7<span class="text-[9px] font-medium opacity-80">Green</span></button>
+          <button onclick="selectBetType('8', 'NUMBER', 9.0, 'bg-rose-600')" class="h-12 rounded-xl bg-rose-600 hover:bg-rose-700 font-black text-xl text-white shadow-md active:scale-90 transition border border-white/20 flex flex-col items-center justify-center leading-none">8<span class="text-[9px] font-medium opacity-80">Red</span></button>
+          <button onclick="selectBetType('9', 'NUMBER', 9.0, 'bg-emerald-500')" class="h-12 rounded-xl bg-emerald-500 hover:bg-emerald-600 font-black text-xl text-white shadow-md active:scale-90 transition border border-white/20 flex flex-col items-center justify-center leading-none">9<span class="text-[9px] font-medium opacity-80">Green</span></button>
+        </div>
+      </div>
+
+      <!-- PREDICTION VISUAL TREND STRIP -->
+      <div class="glass-card rounded-2xl p-3 border-gray-800">
+        <div class="flex items-center justify-between mb-2">
+          <div class="flex items-center gap-1.5 text-xs font-bold text-amber-400">
+            <i class="fas fa-chart-line"></i>
+            <span>Live Trend Strip</span>
+          </div>
+          <span class="text-[10px] text-gray-400">Recent Draws &rarr;</span>
+        </div>
+        <div id="trendStrip" class="flex items-center gap-2 overflow-x-auto py-1"></div>
+      </div>
+
+      <!-- FULL DETAILED RECORD HISTORY TABLE -->
+      <div class="glass-card rounded-2xl p-3 border-gray-800">
+        <div class="flex items-center justify-between mb-3 px-1">
+          <span class="text-xs font-extrabold text-gray-200 uppercase tracking-wider flex items-center gap-1.5">
+            <i class="fas fa-history text-amber-400"></i> Full Game Record History
+          </span>
+          <span class="text-[10px] bg-gray-800 px-2 py-0.5 rounded text-gray-400">Live Updates</span>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-center border-collapse">
+            <thead>
+              <tr class="text-[11px] text-gray-400 border-b border-gray-800 bg-gray-900/50">
+                <th class="py-2 px-1">Period</th>
+                <th class="py-2 px-1">Number</th>
+                <th class="py-2 px-1">Big/Small</th>
+                <th class="py-2 px-1">Color</th>
+              </tr>
+            </thead>
+            <tbody id="gameHistoryTable" class="text-xs divide-y divide-gray-800/50"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div><!-- End Scrollable Body -->
+
+    <!-- SECONDARY FLOATING ACTION BUTTON FOR DIRECT ADMIN CONTROL ACCESS -->
+    <button onclick="promptAdminAccess()" class="admin-glow fixed bottom-5 right-5 z-40 bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 text-black font-black text-xs px-3.5 py-2.5 rounded-full shadow-2xl flex items-center gap-1.5 border-2 border-black/40 hover:scale-105 active:scale-95 transition">
+      <i class="fas fa-sliders text-sm"></i>
+      <span>ADMIN â‹®</span>
+    </button>
+
+    <!-- ADMIN / OWNER CONTROL PANEL MODAL -->
+    <div id="adminModal" class="hidden fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
+      <div class="w-full max-w-md bg-[#161b26] border-2 border-amber-500/60 rounded-3xl p-5 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto relative">
+        
+        <div class="flex justify-between items-center border-b border-gray-800 pb-3">
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-xl bg-amber-500 text-black font-black flex items-center justify-center text-base">
+              <i class="fas fa-crown"></i>
+            </div>
+            <div>
+              <h3 class="text-base font-black text-white">Owner Control Panel</h3>
+              <p class="text-[11px] text-amber-400 font-semibold">Live Game Rigging & Result Control</p>
